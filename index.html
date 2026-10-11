@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>My Singing Monsters</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;font-family:'Trebuchet MS',Verdana,system-ui,sans-serif;overflow:hidden;}
+  #game{position:relative;width:100%;height:100%;user-select:none;transition:background .6s;}
+  .sun{position:absolute;top:24px;right:40px;width:80px;height:80px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff6c0,#ffd64d);box-shadow:0 0 60px 20px rgba(255,221,77,.5);}
+  .cloud{position:absolute;background:#fff;border-radius:50%;opacity:.85;
+    box-shadow:40px 10px 0 -5px #fff,80px 0 0 -8px #fff,-35px 8px 0 -6px #fff;}
+  #island{position:absolute;left:0;right:0;bottom:0;height:58%;border-top:8px solid rgba(0,0,0,.15);transition:background .6s;}
+  .water{position:absolute;left:0;right:0;top:42%;height:5%;background:linear-gradient(180deg,#39a0ed,#1f6fb2);opacity:.85;transform:translateY(-100%);}
+
+  #hud{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:10px 12px;z-index:30;flex-wrap:wrap;}
+  #title{font-size:16px;font-weight:bold;color:#fff;text-shadow:2px 2px 0 #2e5e32,-1px -1px 0 #2e5e32;}
+  .coinbox{margin-left:auto;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.35);color:#ffe57a;
+    font-weight:bold;font-size:18px;padding:6px 14px;border-radius:20px;border:2px solid #ffd54a;}
+  .coinbox .coin{width:20px;height:20px;border-radius:50%;font-size:12px;color:#a06800;
+    background:radial-gradient(circle at 35% 30%,#fff3b0,#ffb300);border:2px solid #d99100;display:flex;align-items:center;justify-content:center;}
+  .btn{cursor:pointer;background:rgba(0,0,0,.35);border:2px solid #fff;color:#fff;border-radius:20px;padding:6px 12px;font-weight:bold;font-size:14px;position:relative;}
+  .btn:hover{background:rgba(0,0,0,.55);}
+  .badge{position:absolute;top:-8px;right:-8px;background:#ff3b3b;color:#fff;font-size:11px;border-radius:10px;padding:1px 6px;display:none;}
+  .badge.show{display:block;}
+
+  #nav{position:absolute;top:52px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:14px;z-index:30;pointer-events:none;}
+  #nav .arrow{pointer-events:auto;cursor:pointer;font-size:24px;color:#fff;background:rgba(0,0,0,.35);width:40px;height:40px;
+    border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;}
+  #islandName{pointer-events:auto;color:#fff;font-weight:bold;font-size:17px;text-shadow:1px 1px 0 #333;background:rgba(0,0,0,.3);padding:6px 16px;border-radius:18px;}
+
+  .monster{position:absolute;width:90px;height:108px;cursor:pointer;transform:translate(-50%,-100%);transform-origin:bottom center;z-index:5;}
+  body.placing .monster{pointer-events:none;}
+  .monster .bob{position:absolute;inset:0;animation:bob 2.4s ease-in-out infinite;transform-origin:bottom center;}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  .monster .body{position:absolute;left:15px;bottom:14px;width:60px;height:60px;border-radius:50% 50% 46% 46%;
+    background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 70%,#fff),var(--c));
+    border:3px solid rgba(0,0,0,.18);box-shadow:0 6px 0 rgba(0,0,0,.12) inset,0 8px 8px rgba(0,0,0,.18);}
+  .monster .foot{position:absolute;bottom:8px;width:18px;height:12px;border-radius:50%;background:color-mix(in srgb,var(--c) 60%,#000 12%);}
+  .monster .foot.l{left:21px}.monster .foot.r{right:21px}
+  .monster .eye{position:absolute;top:26px;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;}
+  .monster .eye::after{content:'';width:7px;height:7px;border-radius:50%;background:#222;}
+  .monster .eye.l{left:25px}.monster .eye.r{right:25px}
+  .monster .mouth{position:absolute;left:50%;top:48px;transform:translateX(-50%);width:18px;height:6px;background:#5a1a1a;border-radius:0 0 10px 10px;transition:height .08s,width .08s;}
+  .monster .horn{position:absolute;top:2px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:18px solid color-mix(in srgb,var(--c) 50%,#fff 30%);}
+  .monster .horn.l{left:25px;transform:rotate(-15deg)}.monster .horn.r{right:25px;transform:rotate(15deg)}
+  .monster .name{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:bold;color:#fff;text-shadow:1px 1px 0 #333;}
+  .monster .badges{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-size:11px;white-space:nowrap;}
+  .monster.singing .bob{animation:none}.monster.singing .body{transform:scale(1.08)}.monster.singing .mouth{height:14px;width:22px}
+  .monster.muted{filter:grayscale(.85) brightness(.85);opacity:.7}
+  .monster .mutebadge{position:absolute;top:-2px;right:10px;font-size:16px;display:none}.monster.muted .mutebadge{display:block}
+
+  .slot{position:absolute;width:72px;height:32px;border-radius:50%;background:rgba(255,255,255,.14);border:2px dashed rgba(255,255,255,.6);
+    transform:translate(-50%,-50%);display:none;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;z-index:20;animation:pulseSlot 1.2s infinite;}
+  @keyframes pulseSlot{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.5)}50%{box-shadow:0 0 0 8px rgba(255,255,255,0)}}
+  body.placing .slot.free{display:flex;}
+  .slot:hover{background:rgba(255,255,255,.35);}
+
+  #shop{position:absolute;left:0;right:0;bottom:0;z-index:30;display:flex;gap:8px;padding:10px;overflow-x:auto;background:linear-gradient(0deg,rgba(0,0,0,.45),rgba(0,0,0,0));align-items:flex-end;}
+  .card{flex:0 0 auto;width:110px;background:rgba(255,255,255,.93);border-radius:12px;padding:8px 6px;text-align:center;border:2px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.25);}
+  .card .preview{width:52px;height:52px;margin:0 auto 3px;position:relative;}
+  .card .pv-body{position:absolute;inset:6px;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 70%,#fff),var(--c));border:2px solid rgba(0,0,0,.2);}
+  .card .pv-eye{position:absolute;top:18px;width:9px;height:9px;border-radius:50%;background:#fff;border:1px solid #333;}
+  .card .pv-eye.l{left:14px}.card .pv-eye.r{right:14px}
+  .card .nm{font-size:12px;font-weight:bold;color:#333;}
+  .card .role{font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.4px;}
+  .card .els{font-size:11px;margin:2px 0 4px;}
+  .card .buy{width:100%;border:none;border-radius:8px;padding:6px 0;font-weight:bold;cursor:pointer;background:linear-gradient(#7bd14a,#4ca52e);color:#fff;font-size:12px;}
+  .card .buy:disabled{filter:grayscale(.6);cursor:not-allowed;opacity:.7;}
+
+  .modal{position:absolute;inset:0;z-index:70;display:none;align-items:center;justify-content:center;background:rgba(10,20,40,.7);}
+  .modal.show{display:flex;}
+  .panel{background:linear-gradient(160deg,#fff,#eaf4ff);border-radius:18px;padding:20px;width:340px;max-width:92vw;max-height:86vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.4);text-align:center;}
+  .panel h2{margin:0 0 6px;color:#2e5e32;}
+  .panel p{margin:4px 0;color:#444;font-size:14px;}
+  .panel select{width:100%;padding:8px;margin:6px 0;border-radius:8px;border:2px solid #bcd;font-size:14px;}
+  .panel .row{display:flex;gap:8px;margin-top:12px;}
+  .panel .row .btn2{flex:1;border:none;border-radius:10px;padding:12px 0;font-weight:bold;font-size:15px;cursor:pointer;color:#fff;}
+  .pBreed{background:linear-gradient(#c77dff,#8a4fc4);}.pClose{background:#8aa;}
+  #breedResult{font-size:14px;min-height:22px;margin-top:8px;font-weight:bold;color:#8a4fc4;}
+  .egg{font-size:46px;display:inline-block;animation:wob 1s ease-in-out infinite;}
+  @keyframes wob{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+
+  .quest{display:flex;align-items:center;gap:8px;background:#fff;border:2px solid #e3ecf5;border-radius:10px;padding:8px;margin:6px 0;text-align:left;}
+  .quest .qinfo{flex:1;}
+  .quest .qname{font-weight:bold;color:#333;font-size:13px;}
+  .quest .qdesc{font-size:11px;color:#777;}
+  .quest .qbar{height:6px;background:#e3ecf5;border-radius:4px;margin-top:4px;overflow:hidden;}
+  .quest .qbar i{display:block;height:100%;background:linear-gradient(90deg,#7bd14a,#4ca52e);}
+  .quest .qreward{font-size:11px;color:#a06800;font-weight:bold;white-space:nowrap;}
+  .quest .qclaim{border:none;border-radius:8px;padding:6px 10px;font-weight:bold;cursor:pointer;background:linear-gradient(#ffce4a,#ff9d2e);color:#5a3500;font-size:12px;}
+  .quest .qclaim:disabled{filter:grayscale(.7);opacity:.6;cursor:default;}
+  .quest.done{opacity:.6;}
+
+  #overlay{position:absolute;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;color:#fff;background:radial-gradient(circle at 50% 30%,rgba(30,90,160,.55),rgba(10,30,60,.92));}
+  #overlay h1{font-size:34px;margin:0;text-shadow:3px 3px 0 #1b5e20;}
+  #overlay p{max-width:370px;font-size:15px;line-height:1.45;opacity:.92;}
+  #startBtn{cursor:pointer;font-size:22px;font-weight:bold;padding:14px 40px;border:none;border-radius:40px;background:linear-gradient(#ffd24a,#ff9d2e);color:#5a3500;box-shadow:0 6px 0 #c46a00;}
+  #startBtn:active{transform:translateY(4px);box-shadow:0 2px 0 #c46a00;}
+  .toast{position:absolute;top:96px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(0,0,0,.75);color:#fff;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:80vw;text-align:center;}
+  .toast.show{opacity:1;}
+  .floatcoin{position:absolute;z-index:25;color:#ffd54a;font-weight:bold;font-size:14px;text-shadow:1px 1px 0 #000;pointer-events:none;animation:floatup 1s ease-out forwards;}
+  @keyframes floatup{to{transform:translateY(-40px);opacity:0}}
+  #lockScreen{position:absolute;inset:0;z-index:15;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(10,20,40,.55);color:#fff;text-align:center;padding:20px;}
+  #lockScreen.show{display:flex;}.lk{font-size:60px;}
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="sun"></div>
+  <div class="cloud" style="top:60px;left:8%;width:60px;height:34px;"></div>
+  <div class="cloud" style="top:120px;left:60%;width:50px;height:28px;"></div>
+  <div class="water"></div>
+  <div id="island"></div>
+
+  <div id="hud">
+    <div id="title">🎵 My Singing Monsters</div>
+    <div id="questsBtn" class="btn">📜 Quests<span class="badge" id="qBadge"></span></div>
+    <div id="breedBtn" class="btn">🥚 Breed</div>
+    <div id="muteAll" class="btn">🔊</div>
+    <div class="coinbox"><span class="coin">$</span><span id="coins">0</span></div>
+  </div>
+
+  <div id="nav">
+    <div class="arrow" id="prevIsland">‹</div>
+    <div id="islandName">Isle</div>
+    <div class="arrow" id="nextIsland">›</div>
+  </div>
+
+  <div id="lockScreen">
+    <div class="lk">🔒</div><h2 id="lockName">Locked Isle</h2><p id="lockDesc"></p>
+    <button class="btn" id="buyIsland" style="font-size:18px;padding:12px 24px;">Buy Island</button>
+  </div>
+
+  <div id="shop"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="modal" id="breedModal"><div class="panel">
+    <h2>🥚 Breeding Den</h2>
+    <p>Combine two monsters' elements to discover new creatures — even 3-element ones!</p>
+    <select id="parentA"></select>
+    <span style="font-weight:bold;color:#8a4fc4;">＋</span>
+    <select id="parentB"></select>
+    <div id="breedResult"></div>
+    <div class="row"><button class="btn2 pBreed" id="doBreed">Breed</button><button class="btn2 pClose" id="closeBreed">Close</button></div>
+  </div></div>
+
+  <div class="modal" id="questModal"><div class="panel">
+    <h2>📜 Quests</h2><p>Complete goals to earn coin rewards!</p>
+    <div id="questList"></div>
+    <div class="row"><button class="btn2 pClose" id="closeQuest">Close</button></div>
+  </div></div>
+
+  <div id="overlay">
+    <h1>🎵 My Singing<br>Monsters</h1>
+    <p>Buy elemental monsters, place them on islands, and they sing together. <b>Breed</b> monsters to combine elements into rare 2- and 3-element creatures, complete <b>quests</b> for rewards, and unlock <b>8 islands</b>!</p>
+    <button id="startBtn">▶ Start Singing</button>
+  </div>
+</div>
+
+<script>
+/* ===================== AUDIO ENGINE ===================== */
+let actx,master,comp; const BPM=100,STEP=60/BPM/4; let nextStepTime=0,current16=0,started=false;
+function initAudio(){actx=new(window.AudioContext||window.webkitAudioContext)();comp=actx.createDynamicsCompressor();
+  master=actx.createGain();master.gain.value=0.85;master.connect(comp);comp.connect(actx.destination);}
+const SEMI={C:0,'C#':1,D:2,'D#':3,E:4,F:5,'F#':6,G:7,'G#':8,A:9,'A#':10,B:11};
+function freq(n){const m=n.match(/^([A-G]#?)(\d)$/);const midi=SEMI[m[1]]+(parseInt(m[2])+1)*12;return 440*Math.pow(2,(midi-69)/12);}
+function voice(when,f,dur,opt={}){const o=actx.createOscillator();o.type=opt.type||'sine';o.frequency.value=f;
+  const g=actx.createGain();const vol=opt.vol??0.3;const a=opt.a??0.01,d=opt.d??0.06,s=opt.s??0.6,r=opt.r??0.12;
+  g.gain.setValueAtTime(0,when);g.gain.linearRampToValueAtTime(vol,when+a);g.gain.linearRampToValueAtTime(vol*s,when+a+d);
+  g.gain.setValueAtTime(vol*s,when+dur);g.gain.linearRampToValueAtTime(0,when+dur+r);
+  if(opt.filter){const fl=actx.createBiquadFilter();fl.type='lowpass';fl.frequency.value=opt.filter;o.connect(fl);fl.connect(g);}else o.connect(g);
+  if(opt.detune){const o2=actx.createOscillator();o2.type=o.type;o2.frequency.value=f;o2.detune.value=opt.detune;o2.connect(g);o2.start(when);o2.stop(when+dur+r+.05);}
+  g.connect(master);o.start(when);o.stop(when+dur+r+.05);}
+function noiseBurst(when,dur,opt={}){const n=Math.floor(actx.sampleRate*dur);const buf=actx.createBuffer(1,n,actx.sampleRate);
+  const data=buf.getChannelData(0);for(let i=0;i<n;i++)data[i]=Math.random()*2-1;const src=actx.createBufferSource();src.buffer=buf;
+  const fl=actx.createBiquadFilter();fl.type=opt.hp?'highpass':'bandpass';fl.frequency.value=opt.freq||4000;fl.Q.value=opt.q||1;
+  const g=actx.createGain();const vol=opt.vol??0.3;g.gain.setValueAtTime(vol,when);g.gain.exponentialRampToValueAtTime(.0001,when+dur);
+  src.connect(fl);fl.connect(g);g.connect(master);src.start(when);src.stop(when+dur);}
+function kick(when){const o=actx.createOscillator(),g=actx.createGain();o.frequency.setValueAtTime(150,when);
+  o.frequency.exponentialRampToValueAtTime(45,when+.13);g.gain.setValueAtTime(.9,when);g.gain.exponentialRampToValueAtTime(.0001,when+.18);o.connect(g);g.connect(master);o.start(when);o.stop(when+.2);}
+function snare(when){noiseBurst(when,.18,{freq:1800,q:.6,vol:.35,hp:true});const o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.value=180;g.gain.setValueAtTime(.3,when);g.gain.exponentialRampToValueAtTime(.0001,when+.1);o.connect(g);g.connect(master);o.start(when);o.stop(when+.12);}
+function tom(when){const o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.setValueAtTime(160,when);o.frequency.exponentialRampToValueAtTime(80,when+.15);g.gain.setValueAtTime(.4,when);g.gain.exponentialRampToValueAtTime(.0001,when+.18);o.connect(g);g.connect(master);o.start(when);o.stop(when+.2);}
+
+const VOICES={
+  bass:(t,n)=>voice(t,freq(n),STEP*2,{type:'triangle',vol:.4,detune:6,filter:700,r:.2}),
+  chords:(t,a)=>a.forEach(x=>voice(t,freq(x),STEP*7,{type:'sawtooth',vol:.09,filter:1400,a:.04,r:.4,detune:8})),
+  pluck:(t,n)=>voice(t,freq(n),STEP*1.5,{type:'triangle',vol:.3,a:.002,d:.12,s:.1,r:.1,filter:3000}),
+  melody:(t,n)=>voice(t,freq(n),STEP*1.8,{type:'square',vol:.16,filter:2600,a:.01,d:.08,s:.5,r:.15,detune:4}),
+  drums:(t,n)=>{n==='K'?kick(t):snare(t);},
+  arp:(t,n)=>voice(t,freq(n),STEP*0.9,{type:'triangle',vol:.12,a:.002,d:.05,s:.2,r:.06,filter:5000}),
+  vocal:(t,n)=>voice(t,freq(n),STEP*7.5,{type:'sine',vol:.16,a:.3,d:.2,s:.8,r:.6,detune:5}),
+  growl:(t,n)=>voice(t,freq(n),STEP*1.6,{type:'sawtooth',vol:.16,filter:520,detune:10,r:.15}),
+  bell:(t,n)=>voice(t,freq(n),STEP*3,{type:'sine',vol:.19,a:.002,d:.4,s:.05,r:.3}),
+  perc:(t,n)=>{n==='T'?tom(t):noiseBurst(t,.04,{freq:7000,vol:.12,hp:true});},
+};
+
+/* ===================== PATTERNS (A-minor pentatonic) ===================== */
+const _=null;
+const P={
+  bass:['A2',_,_,'A2',_,_,'G2',_,'G2',_,_,'E2',_,_,'E2',_],
+  bassHi:['A3',_,_,'A3',_,_,'G3',_,'G3',_,_,'E3',_,_,'E3',_],
+  bassLo:['A2',_,'E2',_,'A2',_,'G2',_,'A2',_,'E2',_,'G2',_,'E2',_],
+  chords:[['A3','C4','E4'],_,_,_,_,_,_,_,['C4','E4','G4'],_,_,_,_,_,_,_],
+  chords2:[['E4','G4','C5'],_,_,_,_,_,_,_,['D4','G4','A4'],_,_,_,_,_,_,_],
+  pluck:[_,_,'A4',_,_,_,'C5',_,_,_,'E5',_,_,'D5',_,_],
+  pluck2:[_,'A4',_,'C5',_,'E5',_,'G5',_,'E5',_,'C5',_,'A4',_,'G4'],
+  melody:['E4',_,'G4',_,'A4',_,'G4',_,'E4',_,'D4',_,'C4',_,'D4',_],
+  melody2:['A4',_,'A4','G4','E4',_,'D4',_,'C4',_,'D4','E4','G4',_,'A4',_],
+  melody3:['C5',_,'A4',_,'G4',_,'E4','G4','A4',_,'G4',_,'E4',_,'D4',_],
+  drums:['K',_,_,_,'S',_,'K',_,'K',_,_,_,'S',_,_,_],
+  drums2:['K',_,'K',_,'S',_,_,'K','K',_,'K',_,'S',_,'S',_],
+  drums3:['K','K',_,_,'S',_,'K',_,'K',_,_,'K','S',_,'K','S'],
+  arp:['A4','C5','E5','G5','A5','G5','E5','C5','A4','C5','E5','G5','A5','G5','E5','C5'],
+  arp2:['E4','A4','C5','E5','G5','E5','C5','A4','E4','A4','C5','E5','G5','E5','C5','A4'],
+  arp3:['A5','G5','E5','C5','A4','C5','E5','G5','A5','G5','E5','C5','A4','C5','E5','G5'],
+  vocal:['A4',_,_,_,_,_,_,_,'G4',_,_,_,_,_,_,_],
+  vocal2:['C5',_,_,_,_,_,_,_,'E4',_,_,_,_,_,_,_],
+  growl:['A2',_,'A2',_,'G2',_,'G2',_,'E2',_,'E2',_,'A2',_,'G2',_],
+  growl2:['A2','A2',_,'G2','G2',_,'E2',_,'A2','A2',_,'G2','E2',_,'G2',_],
+  growl3:['E2',_,'G2',_,'A2',_,'G2',_,'E2',_,'D2',_,'A2',_,'G2',_],
+  bell:[_,_,'E5',_,_,_,'A5',_,_,_,'G5',_,_,_,'C6',_],
+  bell2:[_,'A5',_,'E5',_,'C6',_,'G5',_,'E5',_,'A5',_,'C6',_,'G5'],
+  perc:['T',_,'h','h','T',_,'h','h','T',_,'h','h','T','h','h','h'],
+  perc2:['T','h','h','T','h','h','T','h','T','h','h','T','h','T','h','h'],
+};
+
+/* ===================== ELEMENTS & MONSTERS ===================== */
+const ELEMENTS={
+  plant:{name:'Plant',icon:'🌱',color:'#6abe45'}, cold:{name:'Cold',icon:'❄️',color:'#7fd0e8'},
+  water:{name:'Water',icon:'💧',color:'#4a90e2'}, air:{name:'Air',icon:'💨',color:'#bfe3ef'},
+  earth:{name:'Earth',icon:'⛰️',color:'#b07a43'},
+};
+function hexAvg(arr){let r=0,g=0,b=0;arr.forEach(h=>{const n=parseInt(h.slice(1),16);r+=n>>16&255;g+=n>>8&255;b+=n&255;});
+  const c=arr.length;return '#'+((1<<24)+((r/c|0)<<16)+((g/c|0)<<8)+(b/c|0)).toString(16).slice(1);}
+
+const MDEF=[
+  ['sprout','Sprout',['plant'],'Bass','bass','bass'],
+  ['frostle','Frostle',['cold'],'Chords','chords','chords'],
+  ['bloop','Bloop',['water'],'Pluck','pluck','pluck'],
+  ['breezle','Breezle',['air'],'Melody','melody','melody'],
+  ['rumble','Rumble',['earth'],'Drums','drums','drums'],
+  ['frostree','Frostree',['plant','cold'],'Arp','arp','arp'],
+  ['marshling','Marshling',['plant','water'],'Vocal','vocal','vocal'],
+  ['whistleaf','Whistleaf',['plant','air'],'Melody','melody','melody2'],
+  ['boulderoot','Boulderoot',['plant','earth'],'Growl','growl','growl'],
+  ['glacierp','Glacierp',['cold','water'],'Bells','bell','bell'],
+  ['snowgust','Snowgust',['cold','air'],'Pluck','pluck','pluck2'],
+  ['tundrump','Tundrump',['cold','earth'],'Drums','drums','drums2'],
+  ['mistral','Mistral',['water','air'],'Vocal','vocal','vocal2'],
+  ['mudgel','Mudgel',['water','earth'],'Bass','bass','bassLo'],
+  ['dustdevil','Dustdevil',['air','earth'],'Shaker','perc','perc'],
+  ['frostbloom','Frostbloom',['plant','cold','water'],'Bells','bell','bell2'],
+  ['snowpine','Snowpine',['plant','cold','air'],'Chords','chords','chords2'],
+  ['frostmound','Frostmound',['plant','cold','earth'],'Growl','growl','growl2'],
+  ['lagoonling','Lagoonling',['plant','water','air'],'Melody','melody','melody3'],
+  ['bogwartle','Bogwartle',['plant','water','earth'],'Bass','bass','bassHi'],
+  ['thornvane','Thornvane',['plant','air','earth'],'Arp','arp','arp2'],
+  ['blizzic','Blizzic',['cold','water','air'],'Arp','arp','arp3'],
+  ['permafrost','Permafrost',['cold','water','earth'],'Growl','growl','growl3'],
+  ['frostgale','Frostgale',['cold','air','earth'],'Shaker','perc','perc2'],
+  ['tempestoad','Tempestoad',['water','air','earth'],'Drums','drums','drums3'],
+];
+const MONSTERS={};
+MDEF.forEach((d,i)=>{const[key,name,els,role,voice,pat]=d;
+  MONSTERS[key]={name,els,role,voice,pat,
+    color:els.length===1?ELEMENTS[els[0]].color:hexAvg(els.map(e=>ELEMENTS[e].color)),
+    cost:els.length===1?75:0, rate:els.length===1?3:els.length===2?7:14, horns:i%2===0};});
+
+/* ===================== ISLANDS ===================== */
+const ALL=['plant','cold','water','air','earth'];
+const except=e=>ALL.filter(x=>x!==e);     // special isles host all EXCEPT their opposite element
+const ISLANDS=[
+  {id:'verdant',  name:'Verdant Isle',   els:ALL,           cost:0,    sky:['#7ed0ff','#bfeaff'],grass:['#7ec850','#5aa83b']},
+  {id:'plantis',  name:'Plant Isle',     els:except('cold'),cost:600,  sky:['#cdeaa0','#eaf7c0'],grass:['#6fbf3f','#4f9028']},
+  {id:'coldis',   name:'Cold Isle',      els:except('plant'),cost:1200, sky:['#cfeaff','#eaf6ff'],grass:['#bfe6ef','#7fb6c9']},
+  {id:'tide',     name:'Tide Isle',      els:except('earth'),cost:2500, sky:['#8fe0ff','#cdeeff'],grass:['#56c2c8','#2f8f9c']},
+  {id:'stone',    name:'Stone Isle',     els:except('water'),cost:4500, sky:['#ffe2a8','#ffd27a'],grass:['#b08a4a','#7d5d2e']},
+  {id:'sky',      name:'Sky Sanctuary',  els:ALL,           cost:7000, sky:['#d8e8ff','#eef4ff'],grass:['#a9c8e8','#7fa3c9']},
+  {id:'harmony',  name:'Harmony Isle',   els:ALL,           cost:13000,sky:['#ffd6f0','#ffe9f7'],grass:['#c77dff','#8a4fc4']},
+  {id:'continent',name:'Grand Continent',els:ALL,           cost:25000,sky:['#ffe9b0','#fff6d8'],grass:['#8fae5a','#5e7d34']},
+];
+const SLOT_POS=[[20,70],[38,80],[56,70],[74,80],[12,88],[31,92],[50,84],[69,92],[88,88],[27,62],[50,60],[73,62]];
+
+/* ===================== STATE + SAVE ===================== */
+let coins=200,current=0,allMuted=false,placingType=null;
+const state=ISLANDS.map((_,i)=>({unlocked:i===0,placed:[]}));
+let claimed={};
+function save(){try{localStorage.setItem('msm_save2',JSON.stringify({coins,current,claimed,
+  islands:state.map(s=>({unlocked:s.unlocked,placed:s.placed.map(p=>({type:p.type,slot:p.slot,muted:p.muted}))}))}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem('msm_save2'));if(!d)return;
+  coins=d.coins;current=d.current||0;claimed=d.claimed||{};
+  d.islands.forEach((s,i)=>{if(!state[i])return;state[i].unlocked=s.unlocked;
+    state[i].placed=s.placed.filter(p=>MONSTERS[p.type]).map(p=>({type:p.type,slot:p.slot,muted:p.muted}));});}catch(e){}}
+
+const $=s=>document.querySelector(s);
+const game=$('#game'),island=$('#island'),shop=$('#shop'),coinEl=$('#coins'),toastEl=$('#toast');
+function toast(m){toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>toastEl.classList.remove('show'),1700);}
+function elIcons(t){return MONSTERS[t].els.map(e=>ELEMENTS[e].icon).join('');}
+function curState(){return state[current];}
+function freeSlots(){const u=new Set(curState().placed.map(p=>p.slot));return SLOT_POS.map((_,i)=>i).filter(i=>!u.has(i));}
+function updateCoins(){coinEl.textContent=Math.floor(coins);
+  document.querySelectorAll('.card .buy[data-type]').forEach(b=>b.disabled=coins<MONSTERS[b.dataset.type].cost);
+  const bi=$('#buyIsland');if(bi&&bi.dataset.cost)bi.disabled=coins<+bi.dataset.cost;}
+
+/* ===================== RENDER ===================== */
+function applyTheme(isl){game.style.background=`linear-gradient(180deg,${isl.sky[0]} 0%,${isl.sky[1]} 45%,${isl.grass[0]} 45%,${isl.grass[1]} 100%)`;
+  island.style.background=`radial-gradient(120% 100% at 50% 100%,${isl.grass[0]},${isl.grass[1]})`;}
+function buildSlots(){SLOT_POS.forEach((pos,i)=>{const s=document.createElement('div');s.className='slot';s.dataset.slot=i;s.textContent='+';
+  s.style.left=pos[0]+'%';s.style.top=pos[1]+'%';s.onclick=()=>placeAt(i);game.appendChild(s);});}
+function refreshSlots(){const free=new Set(freeSlots());
+  document.querySelectorAll('.slot').forEach(s=>s.classList.toggle('free',placingType!=null&&free.has(+s.dataset.slot)));}
+function spawnDOM(p){const m=MONSTERS[p.type],pos=SLOT_POS[p.slot];const el=document.createElement('div');
+  el.className='monster'+(p.muted?' muted':'');el.style.left=pos[0]+'%';el.style.top=pos[1]+'%';el.style.setProperty('--c',m.color);
+  el.innerHTML=`<div class="bob">${m.horns?'<div class="horn l"></div><div class="horn r"></div>':''}
+    <div class="body"><div class="eye l"></div><div class="eye r"></div><div class="mouth"></div></div>
+    <div class="badges">${elIcons(p.type)}</div><div class="foot l"></div><div class="foot r"></div></div>
+    <div class="mutebadge">🔇</div><div class="name">${m.name}</div>`;
+  el.querySelector('.bob').style.animationDelay=(Math.random()*-2.4)+'s';
+  el.onclick=()=>{if(placingType)return;p.muted=!p.muted;el.classList.toggle('muted',p.muted);save();};
+  p.el=el;game.appendChild(el);}
+function renderIsland(){const isl=ISLANDS[current];applyTheme(isl);
+  $('#islandName').innerHTML=`${isl.name} ${isl.els.map(e=>ELEMENTS[e].icon).join('')}`;
+  document.querySelectorAll('.monster').forEach(n=>n.remove());
+  const locked=!curState().unlocked;$('#lockScreen').classList.toggle('show',locked);
+  shop.style.display=locked?'none':'flex';$('#breedBtn').style.display=locked?'none':'';
+  if(locked){$('#lockName').innerHTML=`${isl.name} ${isl.els.map(e=>ELEMENTS[e].icon).join('')}`;
+    $('#lockDesc').textContent=`Hosts ${isl.els.map(e=>ELEMENTS[e].name).join(', ')} monsters. Unlock to grow your band!`;
+    const bi=$('#buyIsland');bi.textContent=`Buy for 💰 ${isl.cost}`;bi.dataset.cost=isl.cost;}
+  else{curState().placed.forEach(spawnDOM);buildShop();}
+  updateCoins();refreshSlots();updateQuestBadge();}
+
+function buildShop(){const isl=ISLANDS[current];shop.innerHTML='';
+  ALL.filter(e=>isl.els.includes(e)).forEach(e=>{
+    const type=MDEF.find(d=>d[2].length===1&&d[2][0]===e)[0];const m=MONSTERS[type];
+    const card=document.createElement('div');card.className='card';card.style.setProperty('--c',m.color);
+    card.innerHTML=`<div class="preview"><div class="pv-body"></div><div class="pv-eye l"></div><div class="pv-eye r"></div></div>
+      <div class="nm">${m.name}</div><div class="role">${m.role}</div><div class="els">${elIcons(type)}</div>
+      <button class="buy" data-type="${type}">💰 ${m.cost}</button>`;
+    card.querySelector('.buy').onclick=()=>startPlacing(type);shop.appendChild(card);});
+  updateCoins();}
+
+/* ===================== PLACEMENT ===================== */
+function startPlacing(type){if(coins<MONSTERS[type].cost){toast('Not enough coins!');return;}
+  if(freeSlots().length===0){toast('Island is full!');return;}placingType=type;document.body.classList.add('placing');refreshSlots();
+  toast('Tap a glowing spot to place '+MONSTERS[type].name);}
+function startPlacingFree(type){if(freeSlots().length===0){toast('No room! Free up a slot first.');return false;}
+  placingType=type;document.body.classList.add('placing');refreshSlots();
+  toast('Tap a spot to place your new '+MONSTERS[type].name+'!');return true;}
+function placeAt(slot){if(placingType==null)return;const type=placingType,m=MONSTERS[type];
+  if(m.cost){if(coins<m.cost){toast('Not enough coins!');return;}coins-=m.cost;}
+  const p={type,slot,muted:false};curState().placed.push(p);spawnDOM(p);
+  placingType=null;document.body.classList.remove('placing');refreshSlots();
+  updateCoins();save();updateQuestBadge();toast(m.name+' joined the band! 🎶');}
+
+/* ===================== BREEDING ===================== */
+function combineEls(a,b){return [...new Set([...a,...b])];}
+function findByEls(els){const k=[...els].sort().join(',');return Object.keys(MONSTERS).find(x=>[...MONSTERS[x].els].sort().join(',')===k);}
+function openBreed(){const placed=curState().placed;if(placed.length<2){toast('Place 2 monsters here first to breed.');return;}
+  const opts=placed.map((p,i)=>`<option value="${i}">${MONSTERS[p.type].name} ${elIcons(p.type)}</option>`).join('');
+  $('#parentA').innerHTML=opts;$('#parentB').innerHTML=opts;$('#parentB').selectedIndex=Math.min(1,placed.length-1);
+  $('#breedResult').textContent='';$('#breedModal').classList.add('show');}
+$('#doBreed').onclick=()=>{const placed=curState().placed;const ai=+$('#parentA').value,bi=+$('#parentB').value;
+  if(ai===bi){$('#breedResult').textContent='Pick two different monsters!';return;}
+  const els=combineEls(MONSTERS[placed[ai].type].els,MONSTERS[placed[bi].type].els);
+  const isl=ISLANDS[current];const res=findByEls(els);
+  const fits=res&&(els.length===2||els.length===3)&&MONSTERS[res].els.every(e=>isl.els.includes(e));
+  if(!fits){$('#breedResult').textContent="💔 These don't harmonize here (or make a 4-element mix).";return;}
+  $('#breedResult').innerHTML=`<span class="egg">🥚</span><br>Breeding ${MONSTERS[res].name}...`;$('#doBreed').disabled=true;
+  setTimeout(()=>{$('#doBreed').disabled=false;$('#breedModal').classList.remove('show');
+    if(startPlacingFree(res))toast('🎉 It hatched into a '+MONSTERS[res].name+'!');},2500);};
+$('#closeBreed').onclick=()=>$('#breedModal').classList.remove('show');
+$('#breedBtn').onclick=openBreed;
+
+/* ===================== ISLAND NAV / BUYING ===================== */
+function goIsland(i){if(i<0||i>=ISLANDS.length)return;current=i;placingType=null;document.body.classList.remove('placing');renderIsland();save();}
+$('#prevIsland').onclick=()=>goIsland(current-1);
+$('#nextIsland').onclick=()=>goIsland(current+1);
+$('#buyIsland').onclick=()=>{const isl=ISLANDS[current];if(coins<isl.cost){toast('Not enough coins for '+isl.name);return;}
+  coins-=isl.cost;curState().unlocked=true;renderIsland();save();updateQuestBadge();toast('🏝️ '+isl.name+' unlocked!');};
+
+/* ===================== QUESTS ===================== */
+const allPlaced=()=>state.flatMap(s=>s.placed);
+const totalMonsters=()=>allPlaced().length;
+const ownedTypes=()=>new Set(allPlaced().map(p=>p.type)).size;
+const hasEls=n=>allPlaced().some(p=>MONSTERS[p.type].els.length===n);
+const islandsUnlocked=()=>state.filter(s=>s.unlocked).length;
+const maxOnIsland=()=>Math.max(0,...state.map(s=>s.placed.length));
+const QUESTS=[
+  {id:'q1',name:'First Notes',desc:'Place 3 monsters',reward:150,prog:()=>({c:totalMonsters(),g:3})},
+  {id:'q2',name:'Matchmaker',desc:'Breed a 2-element monster',reward:300,prog:()=>({c:hasEls(2)?1:0,g:1})},
+  {id:'q3',name:'Explorer',desc:'Unlock a 2nd island',reward:400,prog:()=>({c:islandsUnlocked(),g:2})},
+  {id:'q4',name:'Trifecta',desc:'Own a 3-element monster',reward:800,prog:()=>({c:hasEls(3)?1:0,g:1})},
+  {id:'q5',name:'Full Choir',desc:'8 monsters on one island',reward:700,prog:()=>({c:maxOnIsland(),g:8})},
+  {id:'q6',name:'Collector',desc:'Own 10 monster types',reward:1200,prog:()=>({c:ownedTypes(),g:10})},
+  {id:'q7',name:'Globetrotter',desc:'Unlock 5 islands',reward:2500,prog:()=>({c:islandsUnlocked(),g:5})},
+  {id:'q8',name:'Maestro',desc:'Own 18 monster types',reward:5000,prog:()=>({c:ownedTypes(),g:18})},
+];
+function questClaimable(q){const{c,g}=q.prog();return c>=g&&!claimed[q.id];}
+function updateQuestBadge(){const n=QUESTS.filter(questClaimable).length;const b=$('#qBadge');
+  b.textContent=n;b.classList.toggle('show',n>0);}
+function openQuests(){const list=$('#questList');list.innerHTML='';
+  QUESTS.forEach(q=>{const{c,g}=q.prog();const done=claimed[q.id];const can=c>=g&&!done;
+    const pct=Math.min(100,Math.round(c/g*100));
+    const row=document.createElement('div');row.className='quest'+(done?' done':'');
+    row.innerHTML=`<div class="qinfo"><div class="qname">${q.name}</div><div class="qdesc">${q.desc} (${Math.min(c,g)}/${g})</div>
+      <div class="qbar"><i style="width:${pct}%"></i></div></div>
+      <div style="text-align:center"><div class="qreward">💰${q.reward}</div>
+      <button class="qclaim" data-q="${q.id}" ${can?'':'disabled'}>${done?'✓':'Claim'}</button></div>`;
+    row.querySelector('.qclaim').onclick=()=>claimQuest(q.id);list.appendChild(row);});
+  $('#questModal').classList.add('show');}
+function claimQuest(id){const q=QUESTS.find(x=>x.id===id);if(!questClaimable(q))return;
+  coins+=q.reward;claimed[id]=true;updateCoins();save();updateQuestBadge();openQuests();toast('📜 Quest complete! +💰'+q.reward);}
+$('#questsBtn').onclick=openQuests;$('#closeQuest').onclick=()=>$('#questModal').classList.remove('show');
+
+/* ===================== SCHEDULER + INCOME ===================== */
+function scheduleStep(step,time){if(allMuted)return;
+  for(const p of curState().placed){if(p.muted)continue;const m=MONSTERS[p.type],note=P[m.pat][step];if(note==null)continue;
+    VOICES[m.voice](time,note);const delay=(time-actx.currentTime)*1000;setTimeout(()=>{if(p.el)pulse(p.el);},Math.max(0,delay));}}
+function pulse(el){el.classList.add('singing');clearTimeout(el._st);el._st=setTimeout(()=>el.classList.remove('singing'),120);}
+function scheduler(){if(!started)return;while(nextStepTime<actx.currentTime+0.12){scheduleStep(current16,nextStepTime);nextStepTime+=STEP;current16=(current16+1)%16;}}
+function incomeTick(){if(!started)return;let g=0;state.forEach(s=>s.placed.forEach(p=>{if(!p.muted)g+=MONSTERS[p.type].rate;}));
+  if(g>0){coins+=g;updateCoins();const placed=curState().placed;
+    if(placed.length){const p=placed[Math.floor(Math.random()*placed.length)];
+      if(p.el){const f=document.createElement('div');f.className='floatcoin';f.textContent='+'+g;
+        f.style.left=p.el.style.left;f.style.top=p.el.style.top;game.appendChild(f);setTimeout(()=>f.remove(),1000);}}
+    updateQuestBadge();save();}}
+
+/* ===================== CONTROLS / BOOT ===================== */
+$('#muteAll').onclick=function(){allMuted=!allMuted;this.textContent=allMuted?'🔇':'🔊';};
+$('#startBtn').onclick=()=>{if(!actx)initAudio();if(actx.state==='suspended')actx.resume();
+  started=true;nextStepTime=actx.currentTime+0.1;$('#overlay').style.display='none';
+  if(state[0].placed.length===0){state[0].placed.push({type:'sprout',slot:1,muted:false});
+    state[0].placed.push({type:'frostle',slot:2,muted:false});coins-=MONSTERS.sprout.cost+MONSTERS.frostle.cost;}
+  renderIsland();save();toast('Buy, breed & quest to grow your band 🎵');};
+setInterval(scheduler,25);setInterval(incomeTick,1000);
+load();buildSlots();renderIsland();updateCoins();updateQuestBadge();
+</script>
+</body>
+</html>
